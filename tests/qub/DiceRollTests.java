@@ -453,6 +453,19 @@ public interface DiceRollTests
                         Iterable.create(),
                         process.getErrorWriteStream());
                     test.assertEqual(0, process.getExitCode());
+
+                    test.assertLinesEqual(
+                        Iterable.create(
+                            "> 1d8",
+                            "VERBOSE: Expression text: \"1d8\"",
+                            "VERBOSE: Parsed expression: 1d8",
+                            "VERBOSE: After rolls: (2)",
+                            "Result: 2",
+                            "",
+                            "> exit"),
+                        process.getQubProjectDataFolder().await()
+                            .getFile("logs/1.log").await()
+                            .getContentsAsString().await());
                 });
 
                 runner.test("with " + Iterable.create("1d8", "2d6 + 4", "exit").map(Strings::escapeAndQuote) + " in the input stream",
@@ -484,6 +497,25 @@ public interface DiceRollTests
                         Iterable.create(),
                         process.getErrorWriteStream());
                     test.assertEqual(0, process.getExitCode());
+
+                    test.assertLinesEqual(
+                        Iterable.create(
+                            "> 1d8",
+                            "VERBOSE: Expression text: \"1d8\"",
+                            "VERBOSE: Parsed expression: 1d8",
+                            "VERBOSE: After rolls: (2)",
+                            "Result: 2",
+                            "",
+                            "> 2d6 + 4",
+                            "VERBOSE: Expression text: \"2d6 + 4\"",
+                            "VERBOSE: Parsed expression: 2d6 + 4",
+                            "VERBOSE: After rolls: (3 + 4) + 4",
+                            "Result: 11",
+                            "",
+                            "> QUIT"),
+                        process.getQubProjectDataFolder().await()
+                            .getFile("logs/1.log").await()
+                            .getContentsAsString().await());
                 });
             });
         });

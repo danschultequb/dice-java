@@ -32,10 +32,10 @@ public interface DiceRoll
 
         if (!helpParameter.showApplicationHelpLines(process).await())
         {
-            try (final LogStreams streams = CommandLineLogsAction.getLogStreamsFromDesktopProcess(process, verboseParameter.getVerboseCharacterToByteWriteStream().await()))
+            try (final LogStreams logStreams = CommandLineLogsAction.getLogStreamsFromDesktopProcess(process, verboseParameter.getVerboseCharacterToByteWriteStream().await()))
             {
-                final CharacterWriteStream output = streams.getOutput();
-                final VerboseCharacterToByteWriteStream verbose = streams.getVerbose();
+                final CharacterWriteStream output = logStreams.getOutput();
+                final VerboseCharacterToByteWriteStream verbose = logStreams.getVerbose();
                 final DiceConfiguration configuration = DiceConfiguration.parse(process).await();
 
                 final Iterable<String> expressionStrings = expressionParameters.getValues().await()
@@ -71,12 +71,18 @@ public interface DiceRoll
                 else
                 {
                     final CharacterReadStream input = process.getInputReadStream();
+                    final CharacterWriteStream logStream = logStreams.getLogStream();
                     final BooleanValue done = BooleanValue.create(false);
                     while (!done.getAsBoolean())
                     {
                         output.write("> ").await();
                         expressionText = input.readLine()
-                            .then((String line) -> { return line.trim(); })
+                            .then((String line) ->
+                            {
+                                logStream.writeLine(line).await();
+                                
+                                return line.trim();
+                            })
                             .catchError((Throwable e) ->
                             {
                                 output.write("Error: ").await();
