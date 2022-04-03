@@ -42,12 +42,13 @@ public interface DiceRoll
             {
                 final CharacterWriteStream output = streams.getOutput();
                 final VerboseCharacterToByteWriteStream verbose = streams.getVerbose();
+                final DiceConfiguration configuration = DiceConfiguration.parse(process).await();
 
                 final String expressionText = Strings.join(' ', expressionStrings);
-                verbose.writeLine("Expression text: " + Strings.escapeAndQuote(expressionText)).await();
+                configuration.writeExpressionTextTo("Expression text: " + Strings.escapeAndQuote(expressionText), output, verbose).await();
 
                 final DiceExpression parsedExpression = DiceExpression.parse(expressionText)
-                    .onValue((DiceExpression e) -> verbose.writeLine("Parsed expression: " + e.toString()).await())
+                    .onValue((DiceExpression e) -> configuration.writeParsedExpressionTo("Parsed expression: " + e.toString(), output, verbose).await())
                     .catchError((Throwable e) -> output.writeLine("Error: " + e.getMessage()).await())
                     .await();
                 if (parsedExpression != null)
@@ -55,7 +56,7 @@ public interface DiceRoll
                     final Random random = process.getRandom();
     
                     final DiceExpression appliedRollsExpression = parsedExpression.applyRolls(random);
-                    verbose.writeLine("After rolls: " + appliedRollsExpression.toString()).await();
+                    configuration.writeAfterRollsTextTo("After rolls: " + appliedRollsExpression.toString(), output, verbose).await();
                     output.writeLine("Result: " + Integers.toString(appliedRollsExpression.evaluate(random))).await();
                 }
             }

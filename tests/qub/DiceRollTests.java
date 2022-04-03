@@ -285,6 +285,142 @@ public interface DiceRollTests
                             .getFile("logs/1.log").await()
                             .getContentsAsString().await());
                 });
+
+                runner.test("with " + Iterable.create("1d8").map(Strings::escapeAndQuote) + " and all text lines hidden",
+                    (TestResources resources) -> Tuple.create(resources.createFakeDesktopProcess("1d8")),
+                    (Test test, FakeDesktopProcess process) ->
+                {
+                    final CommandLineAction action = DiceRollTests.createCommandLineAction(process);
+                    process.setRandom(DiceTests.createIncrementalRandom());
+                    DiceConfiguration.setConfigurationFile(process, DiceConfiguration.create()
+                        .setExpressionTextOutputVerbosity(DiceConfigurationOutputVerbosity.Hidden)
+                        .setParsedExpressionOutputVerbosity(DiceConfigurationOutputVerbosity.Hidden)
+                        .setAfterRollsOutputVerbosity(DiceConfigurationOutputVerbosity.Hidden))
+                        .await();
+                    
+                    DiceRoll.run(process, action);
+
+                    test.assertLinesEqual(
+                        Iterable.create(
+                            "Result: 2"),
+                        process.getOutputWriteStream());
+                    test.assertLinesEqual(
+                        Iterable.create(),
+                        process.getErrorWriteStream());
+                    test.assertEqual(0, process.getExitCode());
+
+                    test.assertLinesEqual(
+                        Iterable.create(
+                            "Result: 2"),
+                        process.getQubProjectDataFolder().await()
+                            .getFile("logs/1.log").await()
+                            .getContentsAsString().await());
+                });
+
+                runner.test("with " + Iterable.create("1d8").map(Strings::escapeAndQuote) + " and all text lines verbose",
+                    (TestResources resources) -> Tuple.create(resources.createFakeDesktopProcess("1d8")),
+                    (Test test, FakeDesktopProcess process) ->
+                {
+                    final CommandLineAction action = DiceRollTests.createCommandLineAction(process);
+                    process.setRandom(DiceTests.createIncrementalRandom());
+                    DiceConfiguration.setConfigurationFile(process, DiceConfiguration.create()
+                        .setExpressionTextOutputVerbosity(DiceConfigurationOutputVerbosity.Verbose)
+                        .setParsedExpressionOutputVerbosity(DiceConfigurationOutputVerbosity.Verbose)
+                        .setAfterRollsOutputVerbosity(DiceConfigurationOutputVerbosity.Verbose))
+                        .await();
+                    
+                    DiceRoll.run(process, action);
+
+                    test.assertLinesEqual(
+                        Iterable.create(
+                            "Result: 2"),
+                        process.getOutputWriteStream());
+                    test.assertLinesEqual(
+                        Iterable.create(),
+                        process.getErrorWriteStream());
+                    test.assertEqual(0, process.getExitCode());
+
+                    test.assertLinesEqual(
+                        Iterable.create(
+                            "VERBOSE: Expression text: \"1d8\"",
+                            "VERBOSE: Parsed expression: 1d8",
+                            "VERBOSE: After rolls: (2)",
+                            "Result: 2"),
+                        process.getQubProjectDataFolder().await()
+                            .getFile("logs/1.log").await()
+                            .getContentsAsString().await());
+                });
+
+                runner.test("with " + Iterable.create("1d8").map(Strings::escapeAndQuote) + " and all text lines output",
+                    (TestResources resources) -> Tuple.create(resources.createFakeDesktopProcess("1d8")),
+                    (Test test, FakeDesktopProcess process) ->
+                {
+                    final CommandLineAction action = DiceRollTests.createCommandLineAction(process);
+                    process.setRandom(DiceTests.createIncrementalRandom());
+                    DiceConfiguration.setConfigurationFile(process, DiceConfiguration.create()
+                        .setExpressionTextOutputVerbosity(DiceConfigurationOutputVerbosity.Output)
+                        .setParsedExpressionOutputVerbosity(DiceConfigurationOutputVerbosity.Output)
+                        .setAfterRollsOutputVerbosity(DiceConfigurationOutputVerbosity.Output))
+                        .await();
+                    
+                    DiceRoll.run(process, action);
+
+                    test.assertLinesEqual(
+                        Iterable.create(
+                            "Expression text: \"1d8\"",
+                            "Parsed expression: 1d8",
+                            "After rolls: (2)",
+                            "Result: 2"),
+                        process.getOutputWriteStream());
+                    test.assertLinesEqual(
+                        Iterable.create(),
+                        process.getErrorWriteStream());
+                    test.assertEqual(0, process.getExitCode());
+
+                    test.assertLinesEqual(
+                        Iterable.create(
+                            "Expression text: \"1d8\"",
+                            "Parsed expression: 1d8",
+                            "After rolls: (2)",
+                            "Result: 2"),
+                        process.getQubProjectDataFolder().await()
+                            .getFile("logs/1.log").await()
+                            .getContentsAsString().await());
+                });
+
+                runner.test("with " + Iterable.create("1d8").map(Strings::escapeAndQuote) + " and mixed text lines output",
+                    (TestResources resources) -> Tuple.create(resources.createFakeDesktopProcess("1d8")),
+                    (Test test, FakeDesktopProcess process) ->
+                {
+                    final CommandLineAction action = DiceRollTests.createCommandLineAction(process);
+                    process.setRandom(DiceTests.createIncrementalRandom());
+                    DiceConfiguration.setConfigurationFile(process, DiceConfiguration.create()
+                        .setExpressionTextOutputVerbosity(DiceConfigurationOutputVerbosity.Output)
+                        .setParsedExpressionOutputVerbosity(DiceConfigurationOutputVerbosity.Verbose)
+                        .setAfterRollsOutputVerbosity(DiceConfigurationOutputVerbosity.Hidden))
+                        .await();
+                    
+                    DiceRoll.run(process, action);
+
+                    test.assertLinesEqual(
+                        Iterable.create(
+                            "Expression text: \"1d8\"",
+                            "Result: 2"),
+                        process.getOutputWriteStream());
+                    test.assertLinesEqual(
+                        Iterable.create(),
+                        process.getErrorWriteStream());
+                    test.assertEqual(0, process.getExitCode());
+
+                    test.assertLinesEqual(
+                        Iterable.create(
+                            "Expression text: \"1d8\"",
+                            "VERBOSE: Parsed expression: 1d8",
+                            "Result: 2"),
+                        process.getQubProjectDataFolder().await()
+                            .getFile("logs/1.log").await()
+                            .getContentsAsString().await());
+                });
             });
         });
     }

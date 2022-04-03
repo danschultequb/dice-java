@@ -23,7 +23,7 @@ public interface Dice
         Dice.createCommandLineActions(process)
             .addAction(DiceRoll::addAction)
             .addAction(CommandLineLogsAction::addAction)
-            .addAction(CommandLineConfigurationAction::addAction)
+            .addAction(DiceConfiguration::addAction)
             .run();
     }
 }
