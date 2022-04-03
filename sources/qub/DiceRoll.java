@@ -30,12 +30,6 @@ public interface DiceRoll
         final CommandLineParameterList<String> expressionParameters = DiceRoll.addExpression(parameters);
         final CommandLineParameterVerbose verboseParameter = parameters.addVerbose(process);
 
-        final Iterable<String> expressionStrings = expressionParameters.getValues().await()
-            .map((String expression) -> expression.trim())
-            .where(Functions.not(Strings::isNullOrEmpty))
-            .toList();
-        helpParameter.setForceShowApplicationHelpLines(!expressionStrings.any());
-
         if (!helpParameter.showApplicationHelpLines(process).await())
         {
             try (final LogStreams streams = CommandLineLogsAction.getLogStreamsFromDesktopProcess(process, verboseParameter.getVerboseCharacterToByteWriteStream().await()))
@@ -44,20 +38,76 @@ public interface DiceRoll
                 final VerboseCharacterToByteWriteStream verbose = streams.getVerbose();
                 final DiceConfiguration configuration = DiceConfiguration.parse(process).await();
 
-                final String expressionText = Strings.join(' ', expressionStrings);
-                configuration.writeExpressionTextTo("Expression text: " + Strings.escapeAndQuote(expressionText), output, verbose).await();
+                final Iterable<String> expressionStrings = expressionParameters.getValues().await()
+                    .map((String expression) -> expression.trim())
+                    .where(Functions.not(Strings::isNullOrEmpty))
+                    .toList();
+                String expressionText = Strings.join(' ', expressionStrings);
 
-                final DiceExpression parsedExpression = DiceExpression.parse(expressionText)
-                    .onValue((DiceExpression e) -> configuration.writeParsedExpressionTo("Parsed expression: " + e.toString(), output, verbose).await())
-                    .catchError((Throwable e) -> output.writeLine("Error: " + e.getMessage()).await())
-                    .await();
-                if (parsedExpression != null)
+                final Action1<String> processExpressionText = (String expression) ->
                 {
-                    final Random random = process.getRandom();
-    
-                    final DiceExpression appliedRollsExpression = parsedExpression.applyRolls(random);
-                    configuration.writeAfterRollsTextTo("After rolls: " + appliedRollsExpression.toString(), output, verbose).await();
-                    output.writeLine("Result: " + Integers.toString(appliedRollsExpression.evaluate(random))).await();
+                    PreCondition.assertNotNullAndNotEmpty(expression, "expression");
+
+                    configuration.writeExpressionTextTo("Expression text: " + Strings.escapeAndQuote(expression), output, verbose).await();
+
+                    final DiceExpression parsedExpression = DiceExpression.parse(expression)
+                        .onValue((DiceExpression e) -> configuration.writeParsedExpressionTo("Parsed expression: " + e.toString(), output, verbose).await())
+                        .catchError((Throwable e) -> output.writeLine("Error: " + e.getMessage()).await())
+                        .await();
+                    if (parsedExpression != null)
+                    {
+                        final Random random = process.getRandom();
+        
+                        final DiceExpression appliedRollsExpression = parsedExpression.applyRolls(random);
+                        configuration.writeAfterRollsTextTo("After rolls: " + appliedRollsExpression.toString(), output, verbose).await();
+                        output.writeLine("Result: " + Integers.toString(appliedRollsExpression.evaluate(random))).await();
+                    }
+                };
+                
+                if (!Strings.isNullOrEmpty(expressionText))
+                {
+                    processExpressionText.run(expressionText);
+                }
+                else
+                {
+                    final CharacterReadStream input = process.getInputReadStream();
+                    final BooleanValue done = BooleanValue.create(false);
+                    while (!done.getAsBoolean())
+                    {
+                        output.write("> ").await();
+                        expressionText = input.readLine()
+                            .then((String line) -> { return line.trim(); })
+                            .catchError((Throwable e) ->
+                            {
+                                output.write("Error: ").await();
+                                if (Strings.isNullOrEmpty(e.getMessage()))
+                                {
+                                    output.write(Types.getFullTypeName(e)).await();
+                                }
+                                else
+                                {
+                                    output.write(e.getMessage()).await();
+                                }
+                                output.writeLine().await();
+
+                                done.set(true);
+                            })
+                            .await();
+
+                        if (!Strings.isNullOrEmpty(expressionText))
+                        {
+                            if (Iterable.create("quit", "exit", "done").contains(expressionText.toLowerCase()))
+                            {
+                                done.set(true);
+                            }
+                            else
+                            {
+                                processExpressionText.run(expressionText);
+
+                                output.writeLine().await();
+                            }
+                        }
+                    }
                 }
             }
         }

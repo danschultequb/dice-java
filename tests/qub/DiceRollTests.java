@@ -78,16 +78,19 @@ public interface DiceRollTests
 
                     test.assertLinesEqual(
                         Iterable.create(
-                            "Usage: qub-dice [roll] [--expression=]<expression-value> [--help] [--verbose]",
-                            "  Roll dice based on the provided dice expression.",
-                            "  --expression: The expression that describes how many and what kind of dice to roll (plus any constant modifiers).",
-                            "  --help(?):    Show the help message for this application.",
-                            "  --verbose(v): Whether or not to show verbose logs."),
+                            "> Error: qub.EndOfStreamException"),
                         process.getOutputWriteStream());
                     test.assertLinesEqual(
                         Iterable.create(),
                         process.getErrorWriteStream());
-                    test.assertEqual(-1, process.getExitCode());
+                    test.assertEqual(0, process.getExitCode());
+
+                    test.assertLinesEqual(
+                        Iterable.create(
+                            "> Error: qub.EndOfStreamException"),
+                        process.getQubProjectDataFolder().await()
+                            .getFile("logs/1.log").await()
+                            .getContentsAsString().await());
                 });
 
                 runner.test("with " + Iterable.create(" ").map(Strings::escapeAndQuote),
@@ -100,16 +103,19 @@ public interface DiceRollTests
 
                     test.assertLinesEqual(
                         Iterable.create(
-                            "Usage: qub-dice [roll] [--expression=]<expression-value> [--help] [--verbose]",
-                            "  Roll dice based on the provided dice expression.",
-                            "  --expression: The expression that describes how many and what kind of dice to roll (plus any constant modifiers).",
-                            "  --help(?):    Show the help message for this application.",
-                            "  --verbose(v): Whether or not to show verbose logs."),
+                            "> Error: qub.EndOfStreamException"),
                         process.getOutputWriteStream());
                     test.assertLinesEqual(
                         Iterable.create(),
                         process.getErrorWriteStream());
-                    test.assertEqual(-1, process.getExitCode());
+                    test.assertEqual(0, process.getExitCode());
+
+                    test.assertLinesEqual(
+                        Iterable.create(
+                            "> Error: qub.EndOfStreamException"),
+                        process.getQubProjectDataFolder().await()
+                            .getFile("logs/1.log").await()
+                            .getContentsAsString().await());
                 });
 
                 runner.test("with " + Iterable.create("1").map(Strings::escapeAndQuote),
@@ -420,6 +426,64 @@ public interface DiceRollTests
                         process.getQubProjectDataFolder().await()
                             .getFile("logs/1.log").await()
                             .getContentsAsString().await());
+                });
+
+                runner.test("with " + Iterable.create("1d8", "exit").map(Strings::escapeAndQuote) + " in the input stream",
+                    (TestResources resources) -> Tuple.create(resources.createFakeDesktopProcess()),
+                    (Test test, FakeDesktopProcess process) ->
+                {
+                    final CommandLineAction action = DiceRollTests.createCommandLineAction(process);
+                    process.setRandom(DiceTests.createIncrementalRandom());
+                    final InMemoryCharacterToByteStream input = InMemoryCharacterToByteStream.create(Strings.join('\n', Iterable.create(
+                        "1d8",
+                        "exit")))
+                        .endOfStream();
+                    final InMemoryCharacterToByteStream output = process.getOutputWriteStream();
+                    process.setInputReadStream(EchoCharacterToByteReadStream.create(input, output));
+                    DiceRoll.run(process, action);
+
+                    test.assertLinesEqual(
+                        Iterable.create(
+                            "> 1d8",
+                            "Result: 2",
+                            "",
+                            "> exit"),
+                        output);
+                    test.assertLinesEqual(
+                        Iterable.create(),
+                        process.getErrorWriteStream());
+                    test.assertEqual(0, process.getExitCode());
+                });
+
+                runner.test("with " + Iterable.create("1d8", "2d6 + 4", "exit").map(Strings::escapeAndQuote) + " in the input stream",
+                    (TestResources resources) -> Tuple.create(resources.createFakeDesktopProcess()),
+                    (Test test, FakeDesktopProcess process) ->
+                {
+                    final CommandLineAction action = DiceRollTests.createCommandLineAction(process);
+                    process.setRandom(DiceTests.createIncrementalRandom());
+                    final InMemoryCharacterToByteStream input = InMemoryCharacterToByteStream.create(Strings.join('\n', Iterable.create(
+                        "1d8",
+                        "2d6 + 4",
+                        "QUIT")))
+                        .endOfStream();
+                    final InMemoryCharacterToByteStream output = process.getOutputWriteStream();
+                    process.setInputReadStream(EchoCharacterToByteReadStream.create(input, output));
+                    DiceRoll.run(process, action);
+
+                    test.assertLinesEqual(
+                        Iterable.create(
+                            "> 1d8",
+                            "Result: 2",
+                            "",
+                            "> 2d6 + 4",
+                            "Result: 11",
+                            "",
+                            "> QUIT"),
+                        output);
+                    test.assertLinesEqual(
+                        Iterable.create(),
+                        process.getErrorWriteStream());
+                    test.assertEqual(0, process.getExitCode());
                 });
             });
         });
