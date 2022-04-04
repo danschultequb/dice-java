@@ -86,7 +86,12 @@ public class DiceExpressionApplyRollsVisitor implements DiceExpressionVisitor
 
         DiceExpression newExpression = createRandomConstantExpression.run();
 
-        final int diceCount = expression.getDiceCount();
+        Integer diceCount = expression.getDiceCount();
+        if (diceCount == null)
+        {
+            diceCount = 1;
+        }
+        
         for (int i = 1; i < diceCount; i++)
         {
             newExpression = DiceExpression.plus(newExpression, createRandomConstantExpression.run());

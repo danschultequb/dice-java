@@ -60,7 +60,11 @@ public class DiceExpressionToStringVisitor implements DiceExpressionVisitor
     {
         PreCondition.assertNotNull(expression, "expression");
 
-        this.addCharactersWritten(this.stream.write(Integers.toString(expression.getDiceCount())).await());
+        final Integer diceCount = expression.getDiceCount();
+        if (diceCount != null)
+        {
+            this.addCharactersWritten(this.stream.write(Integers.toString(diceCount)).await());
+        }
         this.addCharactersWritten(this.stream.write('d').await());
         this.addCharactersWritten(this.stream.write(Integers.toString(expression.getFaceCount())).await());
     }

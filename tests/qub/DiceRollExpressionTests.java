@@ -17,8 +17,8 @@ public interface DiceRollExpressionTests
                     });
                 };
 
-                createErrorTest.run(-1, 1, new PreConditionFailure("diceCount (-1) must be greater than or equal to 1."));
-                createErrorTest.run(0, 1, new PreConditionFailure("diceCount (0) must be greater than or equal to 1."));
+                createErrorTest.run(-1, 1, new PreConditionFailure("diceCount (-1) must be null or greater than or equal to 1."));
+                createErrorTest.run(0, 1, new PreConditionFailure("diceCount (0) must be null or greater than or equal to 1."));
                 createErrorTest.run(1, -1, new PreConditionFailure("faceCount (-1) must be greater than or equal to 1."));
                 createErrorTest.run(1, 0, new PreConditionFailure("faceCount (0) must be greater than or equal to 1."));
 
@@ -32,15 +32,16 @@ public interface DiceRollExpressionTests
                         test.assertEqual(faceCount, expression.getFaceCount());
                         test.assertEqual(
                             JSONObject.create()
-                                .setNumber("diceCount", diceCount)
+                                .setNumberOrNull("diceCount", diceCount)
                                 .setNumber("faceCount", faceCount),
                             expression.toJson());
                         test.assertEqual(
-                            diceCount + "d" + faceCount,
+                            (diceCount == null ? "" : Integers.toString(diceCount)) + "d" + faceCount,
                             expression.toString());
                     });
                 };
 
+                createTest.run(null, 5);
                 createTest.run(1, 1);
                 createTest.run(2, 6);
                 createTest.run(100, 4);

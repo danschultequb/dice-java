@@ -71,7 +71,12 @@ public interface DiceExpression
         return DiceConstantExpression.create(constant);
     }
 
-    public static DiceRollExpression roll(int diceCount, int faceCount)
+    public static DiceRollExpression roll(int faceCount)
+    {
+        return DiceRollExpression.create(faceCount);
+    }
+
+    public static DiceRollExpression roll(Integer diceCount, int faceCount)
     {
         return DiceRollExpression.create(diceCount, faceCount);
     }
@@ -111,30 +116,53 @@ public interface DiceExpression
             {
                 switch (tokens.getCurrent().getType())
                 {
-                    case Digits:
+                    case Letters:
                         if (expressionStack.any())
                         {
-                            DiceExpression.throwExpectedError("plus sign ('+')", tokens);
+                            throw DiceExpression.expected("plus sign ('+')", tokens);
                         }
                         else
                         {
-                            DiceExpression.parseTerm(tokens, expressionStack);
+                            DiceExpression.parseRollExpression(tokens, expressionStack, null);
+                        }
+                        break;
+
+                    case Digits:
+                        if (expressionStack.any())
+                        {
+                            throw DiceExpression.expected("plus sign ('+')", tokens);
+                        }
+                        else
+                        {
+                            DiceExpression.parseConstantOrRollExpression(tokens, expressionStack);
                         }
                         break;
 
                     case Plus:
                         if (!expressionStack.any())
                         {
-                            DiceExpression.throwExpectedError(Iterable.create(DiceExpression.constantValueText, DiceExpression.diceExpressionText), tokens);
+                            throw DiceExpression.expected(Iterable.create(DiceExpression.constantValueText, DiceExpression.diceExpressionText), tokens);
                         }
                         else if (!tokens.next()) // Get past the plus sign
                         {
-                            DiceExpression.throwMissingError("right side of plus ('+') expression");
+                            throw DiceExpression.missing("right side of plus ('+') expression");
                         }
                         else
                         {
                             // Parse right side of expression.
-                            DiceExpression.parseTerm(tokens, expressionStack);
+                            switch (tokens.getCurrent().getType())
+                            {
+                                case Letters:
+                                    DiceExpression.parseRollExpression(tokens, expressionStack, null);
+                                    break;
+
+                                case Digits:
+                                    DiceExpression.parseConstantOrRollExpression(tokens, expressionStack);
+                                    break;
+
+                                default:
+                                    throw DiceExpression.expected(Iterable.create(DiceExpression.constantValueText, DiceExpression.diceExpressionText), tokens);
+                            }
 
                             final DiceExpression right = expressionStack.pop().await();
                             final DiceExpression left = expressionStack.pop().await();
@@ -143,13 +171,13 @@ public interface DiceExpression
                         break;
 
                     default:
-                        DiceExpression.throwExpectedError(Iterable.create(DiceExpression.constantValueText, "dice count of a roll"), tokens);
+                        throw DiceExpression.expected(Iterable.create(DiceExpression.constantValueText, "dice count of a roll"), tokens);
                 }
             }
 
             if (!expressionStack.any())
             {
-                DiceExpression.throwMissingError(Iterable.create(DiceExpression.constantValueText, DiceExpression.diceExpressionText));
+                throw DiceExpression.missing(Iterable.create(DiceExpression.constantValueText, DiceExpression.diceExpressionText));
             }
 
             final DiceExpression result = expressionStack.pop().await();
@@ -160,7 +188,7 @@ public interface DiceExpression
         });
     }
 
-    private static void parseTerm(Iterator<DiceToken> tokens, Stack<DiceExpression> expressionStack)
+    private static void parseConstantOrRollExpression(Iterator<DiceToken> tokens, Stack<DiceExpression> expressionStack)
     {
         PreCondition.assertNotNull(tokens, "tokens");
         PreCondition.assertTrue(tokens.hasCurrent(), "tokens.hasCurrent()");
@@ -182,50 +210,66 @@ public interface DiceExpression
                     break;
 
                 case Letters:
-                    if (!tokens.getCurrent().getText().equals("d"))
-                    {
-                        DiceExpression.throwExpectedError(Iterable.create("dice roll separator ('d')", "plus sign ('+')"), tokens);
-                    }
-                    else if (!tokens.next())
-                    {
-                        DiceExpression.throwMissingError("dice roll face count value");
-                    }
-                    else if (tokens.getCurrent().getType() != DiceTokenType.Digits)
-                    {
-                        DiceExpression.throwExpectedError("dice roll face count value", tokens);
-                    }
-                    else
-                    {
-                        final int diceCount = Integers.parse(firstDigitToken.getText()).await();
-                        final int faceCount = Integers.parse(tokens.getCurrent().getText()).await();
-                        expressionStack.push(DiceExpression.roll(diceCount, faceCount));
-                        tokens.next();
-                    }
+                    DiceExpression.parseRollExpression(tokens, expressionStack, firstDigitToken);
                     break;
 
                 default:
-                    DiceExpression.throwExpectedError(Iterable.create("dice roll separator ('d')", "plus sign ('+')"), tokens);
+                    throw DiceExpression.expected(Iterable.create("dice roll separator ('d')", "plus sign ('+')"), tokens);
             }
         }
     }
 
-    private static void throwExpectedError(String expected, Iterator<DiceToken> tokens)
+    private static void parseRollExpression(Iterator<DiceToken> tokens, Stack<DiceExpression> expressionStack, DiceToken firstDigitToken)
     {
-        DiceExpression.throwExpectedError(Iterable.create(expected), tokens);
+        PreCondition.assertNotNull(tokens, "tokens");
+        PreCondition.assertEqual(DiceTokenType.Letters, tokens.getCurrent().getType(), "tokens.getCurrent().getType()");
+        PreCondition.assertNotNull(expressionStack, "expressionStack");
+
+        if (!tokens.getCurrent().getText().equals("d"))
+        {
+            if (firstDigitToken != null)
+            {
+                throw DiceExpression.expected(Iterable.create("dice roll separator ('d')", "plus sign ('+')"), tokens);
+            }
+            else
+            {
+                throw DiceExpression.expected(Iterable.create(DiceExpression.constantValueText, "dice roll separator ('d')"), tokens);
+            }
+        }
+        else if (!tokens.next())
+        {
+            throw DiceExpression.missing("dice roll face count value");
+        }
+        else if (tokens.getCurrent().getType() != DiceTokenType.Digits)
+        {
+            throw DiceExpression.expected("dice roll face count value", tokens);
+        }
+        else
+        {
+            final Integer diceCount = (firstDigitToken == null ? null : Integers.parse(firstDigitToken.getText()).await());
+            final int faceCount = Integers.parse(tokens.getCurrent().getText()).await();
+            expressionStack.push(DiceExpression.roll(diceCount, faceCount));
+            tokens.next();
+        }
     }
 
-    private static void throwExpectedError(Iterable<String> expectedOptions, Iterator<DiceToken> tokens)
+    private static ParseException expected(String expected, Iterator<DiceToken> tokens)
     {
-        throw new ParseException("Expected " + English.orList(expectedOptions) + ", but found " + Strings.escapeAndQuote(tokens.getCurrent().getText()) + " instead.");
+        return DiceExpression.expected(Iterable.create(expected), tokens);
     }
 
-    private static void throwMissingError(String expected)
+    private static ParseException expected(Iterable<String> expectedOptions, Iterator<DiceToken> tokens)
     {
-        DiceExpression.throwMissingError(Iterable.create(expected));
+        return new ParseException("Expected " + English.orList(expectedOptions) + ", but found " + Strings.escapeAndQuote(tokens.getCurrent().getText()) + " instead.");
     }
 
-    private static void throwMissingError(Iterable<String> expectedOptions)
+    private static ParseException missing(String expected)
     {
-        throw new ParseException("Missing " + English.orList(expectedOptions) + ".");
+        return DiceExpression.missing(Iterable.create(expected));
+    }
+
+    private static ParseException missing(Iterable<String> expectedOptions)
+    {
+        return new ParseException("Missing " + English.orList(expectedOptions) + ".");
     }
 }

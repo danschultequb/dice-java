@@ -25,7 +25,7 @@ public interface DiceExpressionTests
 
             runner.testGroup("roll(int,int)", () ->
             {
-                final Action3<Integer,Integer,Throwable> constantErrorTest = (Integer diceCount, Integer faceCount, Throwable expected) ->
+                final Action3<Integer,Integer,Throwable> rollErrorTest = (Integer diceCount, Integer faceCount, Throwable expected) ->
                 {
                     runner.test("with " + English.andList(diceCount, faceCount), (Test test) ->
                     {
@@ -34,12 +34,12 @@ public interface DiceExpressionTests
                     });
                 };
 
-                constantErrorTest.run(-1, 1, new PreConditionFailure("diceCount (-1) must be greater than or equal to 1."));
-                constantErrorTest.run(0, 1, new PreConditionFailure("diceCount (0) must be greater than or equal to 1."));
-                constantErrorTest.run(1, -1, new PreConditionFailure("faceCount (-1) must be greater than or equal to 1."));
-                constantErrorTest.run(1, 0, new PreConditionFailure("faceCount (0) must be greater than or equal to 1."));
+                rollErrorTest.run(-1, 1, new PreConditionFailure("diceCount (-1) must be null or greater than or equal to 1."));
+                rollErrorTest.run(0, 1, new PreConditionFailure("diceCount (0) must be null or greater than or equal to 1."));
+                rollErrorTest.run(1, -1, new PreConditionFailure("faceCount (-1) must be greater than or equal to 1."));
+                rollErrorTest.run(1, 0, new PreConditionFailure("faceCount (0) must be greater than or equal to 1."));
 
-                final Action2<Integer,Integer> constantTest = (Integer diceCount, Integer faceCount) ->
+                final Action2<Integer,Integer> rollTest = (Integer diceCount, Integer faceCount) ->
                 {
                     runner.test("with " + English.andList(diceCount, faceCount), (Test test) ->
                     {
@@ -50,9 +50,10 @@ public interface DiceExpressionTests
                     });
                 };
 
-                constantTest.run(1, 1);
-                constantTest.run(1, 2);
-                constantTest.run(3, 4);
+                rollTest.run(null, 10);
+                rollTest.run(1, 1);
+                rollTest.run(1, 2);
+                rollTest.run(3, 4);
             });
 
             runner.testGroup("plus(DiceExpression,DiceExpression)", () ->
@@ -100,15 +101,18 @@ public interface DiceExpressionTests
                 parseErrorTest.run("1e", new ParseException("Expected dice roll separator ('d') or plus sign ('+'), but found \"e\" instead."));
                 parseErrorTest.run("1 e", new ParseException("Expected dice roll separator ('d') or plus sign ('+'), but found \"e\" instead."));
                 parseErrorTest.run("+", new ParseException("Expected constant value or dice expression, but found \"+\" instead."));
-                parseErrorTest.run("d", new ParseException("Expected constant value or dice count of a roll, but found \"d\" instead."));
+                parseErrorTest.run("d", new ParseException("Missing dice roll face count value."));
                 parseErrorTest.run("*", new ParseException("Expected constant value or dice count of a roll, but found \"*\" instead."));
                 parseErrorTest.run("1d", new ParseException("Missing dice roll face count value."));
                 parseErrorTest.run("1d+", new ParseException("Expected dice roll face count value, but found \"+\" instead."));
                 parseErrorTest.run("1d*", new ParseException("Expected dice roll face count value, but found \"*\" instead."));
                 parseErrorTest.run("1&", new ParseException("Expected dice roll separator ('d') or plus sign ('+'), but found \"&\" instead."));
                 parseErrorTest.run("1  2", new ParseException("Expected dice roll separator ('d') or plus sign ('+'), but found \"2\" instead."));
+                parseErrorTest.run("d  d", new ParseException("Expected dice roll face count value, but found \"d\" instead."));
                 parseErrorTest.run("1+", new ParseException("Missing right side of plus ('+') expression."));
                 parseErrorTest.run("1d6 5", new ParseException("Expected plus sign ('+'), but found \"5\" instead."));
+                parseErrorTest.run("1d6 d", new ParseException("Expected plus sign ('+'), but found \"d\" instead."));
+                parseErrorTest.run("d4 + fireball", new ParseException("Expected constant value or dice roll separator ('d'), but found \"fireball\" instead."));
 
                 final Action2<String,DiceExpression> parseTest = (String text, DiceExpression expected) ->
                 {
@@ -121,6 +125,7 @@ public interface DiceExpressionTests
 
                 parseTest.run("1", DiceExpression.constant(1));
                 parseTest.run("1d4", DiceExpression.roll(1, 4));
+                parseTest.run("d4", DiceExpression.roll(null, 4));
                 parseTest.run(
                     "1 +    3",
                     DiceExpression.plus(
@@ -138,6 +143,11 @@ public interface DiceExpressionTests
                             DiceExpression.roll(2, 6),
                             DiceExpression.constant(3)),
                         DiceExpression.roll(1, 4)));
+                parseTest.run(
+                    "d4 + d20",
+                    DiceExpression.plus(
+                        DiceExpression.roll(4),
+                        DiceExpression.roll(20)));
             });
         });
     }

@@ -2,24 +2,29 @@ package qub;
 
 public class DiceRollExpression extends DiceExpressionBase
 {
-    private final int diceCount;
+    private final Integer diceCount;
     private final int faceCount;
 
-    private DiceRollExpression(int diceCount, int faceCount)
+    private DiceRollExpression(Integer diceCount, int faceCount)
     {
-        PreCondition.assertGreaterThanOrEqualTo(diceCount, 1, "diceCount");
+        PreCondition.assertNullOrGreaterThanOrEqualTo(diceCount, 1, "diceCount");
         PreCondition.assertGreaterThanOrEqualTo(faceCount, 1, "faceCount");
 
         this.diceCount = diceCount;
         this.faceCount = faceCount;
     }
 
-    public static DiceRollExpression create(int diceCount, int faceCount)
+    public static DiceRollExpression create(int faceCount)
+    {
+        return DiceRollExpression.create(null, faceCount);
+    }
+
+    public static DiceRollExpression create(Integer diceCount, int faceCount)
     {
         return new DiceRollExpression(diceCount, faceCount);
     }
 
-    public int getDiceCount()
+    public Integer getDiceCount()
     {
         return this.diceCount;
     }
@@ -33,7 +38,7 @@ public class DiceRollExpression extends DiceExpressionBase
     public JSONObject toJson()
     {
         return JSONObject.create()
-            .setNumber("diceCount", this.getDiceCount())
+            .setNumberOrNull("diceCount", this.getDiceCount())
             .setNumber("faceCount", this.getFaceCount());
     }
 

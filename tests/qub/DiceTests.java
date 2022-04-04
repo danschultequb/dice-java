@@ -103,6 +103,34 @@ public interface DiceTests
                             .getContentsAsString().await());
                 });
 
+                runner.test("with " + Strings.escapeAndQuote("d10"),
+                    (TestResources resources) -> Tuple.create(resources.createFakeDesktopProcess("d10")),
+                    (Test test, FakeDesktopProcess process) ->
+                {
+                    process.setRandom(DiceTests.createIncrementalRandom());
+                    
+                    Dice.run(process);
+
+                    test.assertLinesEqual(
+                        Iterable.create(
+                            "Result: 2"),
+                        process.getOutputWriteStream());
+                    test.assertLinesEqual(
+                        Iterable.create(),
+                        process.getErrorWriteStream());
+                    test.assertEqual(0, process.getExitCode());
+
+                    test.assertLinesEqual(
+                        Iterable.create(
+                            "VERBOSE: Expression text: \"d10\"",
+                            "VERBOSE: Parsed expression: d10",
+                            "VERBOSE: After rolls: (2)",
+                            "Result: 2"),
+                        process.getQubProjectDataFolder().await()
+                            .getFile("logs/1.log").await()
+                            .getContentsAsString().await());
+                });
+
                 runner.test("with " + Strings.escapeAndQuote("3d6 + 4"),
                     (TestResources resources) -> Tuple.create(resources.createFakeDesktopProcess("3d6 + 4")),
                     (Test test, FakeDesktopProcess process) ->
@@ -167,7 +195,7 @@ public interface DiceTests
 
                     test.assertLinesEqual(
                         Iterable.create(
-                            "Error: Expected constant value or dice count of a roll, but found \"fireball\" instead."),
+                            "Error: Expected constant value or dice roll separator ('d'), but found \"fireball\" instead."),
                         process.getOutputWriteStream());
                     test.assertLinesEqual(
                         Iterable.create(),
@@ -177,7 +205,7 @@ public interface DiceTests
                     test.assertLinesEqual(
                         Iterable.create(
                             "VERBOSE: Expression text: \"fireball\"",
-                            "Error: Expected constant value or dice count of a roll, but found \"fireball\" instead."),
+                            "Error: Expected constant value or dice roll separator ('d'), but found \"fireball\" instead."),
                         process.getQubProjectDataFolder().await()
                             .getFile("logs/1.log").await()
                             .getContentsAsString().await());
